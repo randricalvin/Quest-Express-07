@@ -9,7 +9,6 @@ const express = require("express");
 // We store all express methods in a variable called app
 const app = express();
 
-// If an environment variable named PORT exists, we take it in order to let the user change the port without chaning the source code. Otherwise we give a default value of 3000
 const port = process.env.PORT ?? 3000;
 
 connection.connect((err) => {
@@ -21,31 +20,44 @@ connection.connect((err) => {
 });
 
 app.use(express.json());
-
-app.get("/api/users", (req, res) => {
-  connection.query("SELECT * FROM users", (err, result) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send("Error retrieving data from database");
-    } else {
-      res.json(result);
-    }
-  });
+connection.query("SELECT * FROM movies", (err, result) => {
+  // Do something when mysql is done executing the query
+  console.log(err, result)
 });
 
-app.post('/api/users', (req, res) => {
-  const { firstname, lastname, email } = req.body;
-  // const threadId = req.body;
+app.post('/api/movies', (req, res) => {
+  const { title, director, year, color, duration } = req.body;
   connection.query(
-    'INSERT INTO users(firstname, lastname, email) VALUES (?, ?, ?)', [firstname, lastname, email],
-    (err, result) => {
+    "INSERT INTO movies (title, director, year, color, duration) VALUES (?, ?, ?, ?, ?)",
+    [title, director, year, color, duration],
+      (err, result) => {
       if (err) {
-        res.status(500).send('Error saving the user');
+        console.error(err);
+        res.status(500).send('Error saving a movie');
       } else {
-        res.status(200).send('user successfully saved');
+        const createdMovie = { title, director, year, color, duration };
+        res.status(201).json(createdMovie);
       }
     }
   );
+});
+
+app.put('/api/movies/:id', (req, res) => {
+  const movieId = req.params.id;
+  const moviePropsToUpdate = req.body;
+  connection.query(
+    'UPDATE movies SET ? WHERE id = ?',
+    [moviePropsToUpdate, movieId],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        res.status(500).send('Error updating a movie');
+      } else if (result.affectedRows === 0) {
+        res.status(404).send('Movie not found.');
+      } else {
+        res.sendStatus(204);
+      }
+    });
 });
 
 // We listen to incoming request on the port defined above
